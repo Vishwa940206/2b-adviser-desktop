@@ -49,8 +49,16 @@ export function useUser(): UserState & {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setState({ id: null, email: null, fullName: null, loading: false });
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore network errors
+    }
+    // Wipe every Supabase session key from localStorage directly
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-")) localStorage.removeItem(key);
+    }
+    window.location.replace("/login");
   };
 
   return { ...state, signOut, refresh };

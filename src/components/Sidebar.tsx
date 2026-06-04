@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { useUser } from "@/hooks/useUser";
 
@@ -38,14 +38,9 @@ const MORE = [
 
 export function Sidebar() {
   const path = usePathname();
-  const router = useRouter();
   const { email, fullName, signOut } = useUser();
 
-  const onSignOut = async () => {
-    await signOut();
-    router.refresh();
-    router.push("/login");
-  };
+  const onSignOut = () => signOut();
 
   const displayName = fullName ?? email?.split("@")[0] ?? "Adviser";
   const initials = (fullName ?? email ?? "AD")
@@ -56,7 +51,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 shrink-0 bg-white/80 backdrop-blur border-r border-[var(--border)] flex flex-col h-screen sticky top-0">
       <div className="px-5 py-5 border-b border-[var(--border)] flex items-center gap-3">
-        {/* AA logo mark */}
+        {/* MG logo mark */}
         <div className="w-10 h-10 rounded-xl shrink-0 overflow-hidden shadow-md shadow-[var(--primary)]/30">
           <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -67,13 +62,13 @@ export function Sidebar() {
             </defs>
             <rect width="40" height="40" rx="10" fill="url(#sg)"/>
             <ellipse cx="17" cy="12" rx="9" ry="5" fill="rgba(255,255,255,0.18)" transform="rotate(-15 17 12)"/>
-            <text x="20" y="26" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="900" fontSize="15" fill="#ffffff" letterSpacing="-0.5">AA</text>
+            <text x="20" y="26" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="900" fontSize="15" fill="#ffffff" letterSpacing="-0.5">MG</text>
           </svg>
         </div>
         <div className="min-w-0">
-          <div className="font-bold text-[var(--text-primary)] text-sm leading-tight">Agentic Advisor</div>
+          <div className="font-bold text-[var(--text-primary)] text-sm leading-tight">MortgageGPT</div>
           <div className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">
-            Smart advice, powered by AI
+            Your AI mortgage adviser
           </div>
         </div>
       </div>
