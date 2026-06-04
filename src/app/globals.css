@@ -5,14 +5,15 @@
   --primary-dark: #4F35CC;
   --primary-light: #EDE9FF;
   --accent: #A78BFA;
-  --bg: #F8F7FF;
+  --bg: #F5F4FF;
   --surface: #FFFFFF;
-  --border: #DDD6FE;
-  --text-primary: #1A0A3C;
-  --text-secondary: #6B7280;
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --error: #EF4444;
+  --border: #E2DEFF;
+  --text-primary: #0F0A1E;
+  --text-secondary: #52526B;
+  --text-muted: #8B8BA8;
+  --success: #16A34A;
+  --warning: #D97706;
+  --error: #DC2626;
 }
 
 @theme inline {

@@ -3,7 +3,8 @@
 import {
   BarChart3,
   Briefcase,
-  CheckCircle2,
+  CheckSquare,
+  ChevronRight,
   Inbox,
   Landmark,
   Link2,
@@ -34,59 +35,53 @@ export default function DashboardPage() {
 
   const kpis = [
     {
-      label: "New applications",
+      label: "Applications",
       value: stats.loading ? "—" : String(stats.newApplications),
-      hint: "Submitted via widget",
+      hint: "New submissions via widget",
       href: "/applications",
       Icon: Inbox,
-      tint: "from-violet-400/15 to-transparent",
-      iconBg: "bg-violet-50",
-      iconColor: "text-[var(--primary)]",
+      iconBg: "bg-violet-100",
+      iconColor: "text-violet-600",
+      valueCls: "text-[var(--text-primary)]",
     },
     {
-      label: "Active cases",
+      label: "Active",
       value: stats.loading ? "—" : String(stats.activeCases),
-      hint: "In pipeline",
+      hint: "Currently in pipeline",
       href: "/pipeline",
       Icon: Briefcase,
-      tint: "from-purple-400/15 to-transparent",
-      iconBg: "bg-purple-50",
-      iconColor: "text-purple-600",
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      valueCls: "text-[var(--text-primary)]",
     },
     {
-      label: "Tasks due today",
+      label: "Tasks",
       value: stats.loading ? "—" : String(stats.tasksDueToday),
-      hint: "Action required",
+      hint: "Due today; action required",
       href: "/pipeline",
-      Icon: CheckCircle2,
-      tint: "from-amber-400/15 to-transparent",
-      iconBg: "bg-amber-50",
+      Icon: CheckSquare,
+      iconBg: "bg-amber-100",
       iconColor: "text-amber-600",
+      valueCls: "text-[var(--text-primary)]",
     },
     {
-      label: "Pipeline value",
+      label: "Pipeline",
       value: stats.loading ? "—" : formatCurrencyGBP(stats.pipelineValue),
-      hint: "Open cases",
+      hint: "Total estimated value",
       href: "/pipeline",
       Icon: TrendingUp,
-      tint: "from-emerald-400/15 to-transparent",
-      iconBg: "bg-emerald-50",
+      iconBg: "bg-emerald-100",
       iconColor: "text-emerald-600",
+      valueCls: "text-[var(--text-primary)]",
     },
   ];
 
   const rateCards = [
-    {
-      label: "Base Rate",
-      value: rates.baseRate,
-      note: rates.isLive ? "BoE · Live" : "Indicative",
-      live: rates.isLive,
-      highlight: true,
-    },
-    { label: "2yr Fixed", value: rates.twoYearFixed, note: "avg indicative" },
-    { label: "5yr Fixed", value: rates.fiveYearFixed, note: "avg indicative" },
-    { label: "Tracker", value: rates.trackerRate, note: "base + 0.90%" },
-    { label: "SVR", value: rates.svr, note: "avg indicative", warning: true },
+    { label: "Base Rate",  value: rates.baseRate,      note: "BoE",           highlight: true  },
+    { label: "2yr Fixed",  value: rates.twoYearFixed,  note: "avg indication", highlight: false },
+    { label: "5yr Fixed",  value: rates.fiveYearFixed, note: "avg indication", highlight: false },
+    { label: "Tracker",    value: rates.trackerRate,   note: "base + 0.90%",   highlight: false },
+    { label: "SVR",        value: rates.svr,           note: "avg indication", warning: true    },
   ];
 
   return (
@@ -96,44 +91,45 @@ export default function DashboardPage() {
         subtitle="Here's your business at a glance"
       />
 
-      <div className="p-8 space-y-8">
-        {/* KPI cards */}
-        <section className="grid grid-cols-4 gap-4">
+      <div className="p-6 space-y-7">
+
+        {/* KPI row */}
+        <div className="grid grid-cols-4 gap-4">
           {kpis.map((k) => {
             const Icon = k.Icon;
             return (
               <Link
                 key={k.label}
                 href={k.href}
-                className={`card-hover rounded-2xl border border-[var(--border)] bg-gradient-to-br ${k.tint} bg-white p-5 relative overflow-hidden group`}
+                className="card-hover rounded-2xl border border-[var(--border)] bg-white p-5 flex flex-col gap-3"
               >
-                <div
-                  className={`w-10 h-10 rounded-xl ${k.iconBg} border border-[var(--border)] flex items-center justify-center`}
-                >
-                  <Icon size={18} className={k.iconColor} />
+                <div className="flex items-center justify-between">
+                  <div className={`w-9 h-9 rounded-xl ${k.iconBg} flex items-center justify-center`}>
+                    <Icon size={16} className={k.iconColor} />
+                  </div>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-muted)]">
+                    {k.label}
+                  </span>
                 </div>
-                <div className="mt-4 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                  {k.value}
+                <div>
+                  <div className={`text-3xl font-extrabold tracking-tight ${k.valueCls}`}>
+                    {k.value}
+                  </div>
+                  <div className="text-xs text-[var(--text-secondary)] mt-1 font-medium">{k.hint}</div>
                 </div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mt-1">
-                  {k.label}
-                </div>
-                <div className="text-xs text-[var(--text-secondary)] mt-0.5">{k.hint}</div>
               </Link>
             );
           })}
-        </section>
+        </div>
 
-        {/* Live market rates */}
-        <section>
+        {/* Market rates */}
+        <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Market Rates</h2>
+            <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">Market Rates</h2>
             <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${ratesLoading ? "bg-[var(--text-secondary)]" : rates.isLive ? "bg-[var(--success)]" : "bg-[var(--text-secondary)]"}`}
-              />
-              <span className="text-xs text-[var(--text-secondary)]">
-                {ratesLoading ? "Loading…" : rates.isLive ? `Live · BoE · ${rates.asOf}` : "Indicative"}
+              <span className={`w-2 h-2 rounded-full ${ratesLoading ? "bg-[var(--text-muted)]" : rates.isLive ? "bg-[var(--success)]" : "bg-[var(--text-muted)]"}`} />
+              <span className="text-xs font-medium text-[var(--text-secondary)]">
+                {ratesLoading ? "Loading…" : rates.isLive ? `Live · BoE · ${rates.asOf}` : "Indicative average"}
               </span>
             </div>
           </div>
@@ -144,152 +140,148 @@ export default function DashboardPage() {
                 key={r.label}
                 className={`rounded-2xl border p-4 ${
                   r.highlight
-                    ? "border-[var(--primary)]/30 bg-[var(--primary-light)]"
+                    ? "border-[var(--primary)]/25 bg-[var(--primary-light)]"
                     : r.warning
-                      ? "border-amber-200 bg-amber-50"
-                      : "border-[var(--border)] bg-white"
+                    ? "border-amber-200 bg-amber-50"
+                    : "border-[var(--border)] bg-white"
                 }`}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-2">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">
                   {r.label}
                 </div>
-                <div
-                  className={`text-2xl font-bold tracking-tight ${
-                    r.highlight
-                      ? "text-[var(--primary)]"
-                      : r.warning
-                        ? "text-amber-700"
-                        : "text-[var(--text-primary)]"
-                  }`}
-                >
+                <div className={`text-2xl font-extrabold tracking-tight ${
+                  r.highlight ? "text-[var(--primary)]" : r.warning ? "text-amber-700" : "text-[var(--text-primary)]"
+                }`}>
                   {ratesLoading ? "—" : `${r.value.toFixed(2)}%`}
                 </div>
-                <div className="flex items-center gap-1 mt-2">
-                  {r.live && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  {r.highlight && rates.isLive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] inline-block" />
                   )}
-                  <span className="text-[10px] text-[var(--text-secondary)]">{r.note}</span>
+                  <span className="text-[10px] font-medium text-[var(--text-secondary)]">{r.note}</span>
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* Quick actions */}
-        <section>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Quick actions</h2>
+        <div>
+          <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight mb-3">Quick actions</h2>
           <div className="grid grid-cols-3 gap-4">
-            <QuickCard
-              href="/applications"
-              Icon={Inbox}
-              title="Review applications"
-              description="See new submissions from your widget and approve or reject them."
-              color="violet"
-            />
-            <QuickCard
-              href="/lender-match"
-              Icon={Landmark}
-              title="Lender match"
-              description="AI ranks lenders against a client profile and composes the outreach email."
-              color="purple"
-            />
-            <QuickCard
-              href="/embed-widget"
-              Icon={Link2}
-              title="Embed widget"
-              description="Copy the iframe snippet to embed application forms on partner websites."
-              color="indigo"
-            />
+            {[
+              {
+                href: "/applications",
+                Icon: Inbox,
+                iconBg: "bg-violet-500",
+                title: "Review applications",
+                desc: "Approve or reject new submissions from your website widget seamlessly.",
+                cta: "Open queue",
+              },
+              {
+                href: "/lender-match",
+                Icon: Landmark,
+                iconBg: "bg-cyan-500",
+                title: "Lender match",
+                desc: "AI-powered ranking of lenders against client profiles with auto-drafting.",
+                cta: "Start matching",
+              },
+              {
+                href: "/embed-widget",
+                Icon: Link2,
+                iconBg: "bg-indigo-500",
+                title: "Embed widget",
+                desc: "Get the iframe snippet to start capturing leads directly on your partner sites.",
+                cta: "Copy code",
+              },
+            ].map((item) => {
+              const Icon = item.Icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="card-hover rounded-2xl border border-[var(--border)] bg-white p-5 flex flex-col gap-3 group"
+                >
+                  <div className={`w-11 h-11 rounded-xl ${item.iconBg} flex items-center justify-center shadow-sm`}>
+                    <Icon size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-[var(--text-primary)] text-sm">{item.title}</div>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed font-medium">{item.desc}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs font-bold text-[var(--primary)] mt-auto">
+                    {item.cta}
+                    <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        </section>
+        </div>
 
         {/* AI + Analytics row */}
-        <section className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <Link
             href="/ai-tools"
-            className="card-hover rounded-2xl border border-[var(--primary)]/20 bg-gradient-to-br from-[var(--primary-light)] to-white p-5 flex items-start gap-4"
+            className="card-hover rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary-light)] p-5 flex items-center gap-4 group"
           >
-            <div className="w-11 h-11 rounded-xl bg-[var(--primary)] flex items-center justify-center shrink-0 shadow shadow-[var(--primary)]/30">
-              <Sparkles size={20} className="text-white" />
+            <div className="w-11 h-11 rounded-xl bg-[var(--primary)] flex items-center justify-center shrink-0 shadow-md shadow-[var(--primary)]/30">
+              <Sparkles size={18} className="text-white" />
             </div>
-            <div>
-              <div className="font-bold text-[var(--text-primary)]">AI Tools</div>
-              <p className="text-sm text-[var(--text-secondary)] mt-1">
-                Lead scoring, email drafting, document summarisation — all AI-powered.
-              </p>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-[var(--text-primary)] text-sm">AI Tools</div>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">Lead scoring, document summarisation & email drafting</p>
             </div>
+            <ChevronRight size={14} className="text-[var(--primary)] shrink-0 group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
           <Link
             href="/analytics"
-            className="card-hover rounded-2xl border border-[var(--border)] bg-white p-5 flex items-start gap-4"
+            className="card-hover rounded-2xl border border-[var(--border)] bg-white p-5 flex items-center gap-4 group"
           >
-            <div className="w-11 h-11 rounded-xl bg-[var(--primary-light)] flex items-center justify-center shrink-0">
-              <BarChart3 size={20} className="text-[var(--primary)]" />
+            <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+              <BarChart3 size={18} className="text-emerald-600" />
             </div>
-            <div>
-              <div className="font-bold text-[var(--text-primary)]">Analytics</div>
-              <p className="text-sm text-[var(--text-secondary)] mt-1">
-                Leads over time, revenue pipeline, case mix, and conversion funnel.
-              </p>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-[var(--text-primary)] text-sm">Analytics</div>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">Deep insights into conversion funnels and revenue pipelines</p>
             </div>
+            <ChevronRight size={14} className="text-[var(--text-muted)] shrink-0 group-hover:translate-x-0.5 transition-transform" />
           </Link>
-        </section>
+        </div>
 
-        {/* AI insight banner */}
-        <section className="rounded-2xl border border-[var(--primary)]/20 bg-gradient-to-r from-[var(--primary)] to-purple-500 p-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+        {/* AI CTA banner */}
+        <div
+          className="rounded-2xl p-6 flex items-center justify-between gap-6 overflow-hidden relative"
+          style={{ background: "linear-gradient(135deg, #1A0A3C 0%, #4F35CC 60%, #8B5CF6 100%)" }}
+        >
+          {/* Background glow */}
+          <div className="absolute right-16 top-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
+            <Zap size={96} className="text-white" strokeWidth={1} />
+          </div>
+
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
               <Zap size={18} className="text-white" />
             </div>
             <div>
-              <div className="font-bold text-white">AI ready · Start a new case</div>
-              <div className="text-sm text-white/80 mt-0.5">
-                Your AI adviser assistant is standing by to match, score, and draft.
+              <div className="font-extrabold text-white text-base tracking-tight">AI ready · Start a new case</div>
+              <div className="text-sm text-white/70 mt-0.5 font-medium">
+                Your AI adviser assistant is standing by to match, score, and draft for your next client profile.
               </div>
             </div>
           </div>
+
           <Link
             href="/lender-match"
-            className="rounded-xl bg-white text-[var(--primary)] text-sm font-bold px-5 py-2.5 hover:bg-white/90 transition shrink-0"
+            className="relative z-10 shrink-0 rounded-full bg-white text-[var(--primary-dark)] text-sm font-extrabold px-6 py-2.5 hover:bg-white/90 transition shadow-lg"
           >
             Get started →
           </Link>
-        </section>
+        </div>
+
       </div>
     </>
-  );
-}
-
-function QuickCard({
-  href,
-  Icon,
-  title,
-  description,
-  color,
-}: {
-  href: string;
-  Icon: typeof Inbox;
-  title: string;
-  description: string;
-  color: "violet" | "purple" | "indigo";
-}) {
-  const palette = {
-    violet: { bg: "bg-violet-50", icon: "text-violet-600", border: "border-violet-100" },
-    purple: { bg: "bg-purple-50", icon: "text-purple-600", border: "border-purple-100" },
-    indigo: { bg: "bg-indigo-50", icon: "text-indigo-600", border: "border-indigo-100" },
-  }[color];
-
-  return (
-    <Link
-      href={href}
-      className={`card-hover rounded-2xl border ${palette.border} bg-white p-5 block`}
-    >
-      <div className={`w-10 h-10 rounded-xl ${palette.bg} flex items-center justify-center`}>
-        <Icon size={18} className={palette.icon} />
-      </div>
-      <div className="font-bold mt-3 text-[var(--text-primary)]">{title}</div>
-      <p className="text-sm text-[var(--text-secondary)] mt-1 leading-relaxed">{description}</p>
-    </Link>
   );
 }
