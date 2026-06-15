@@ -49,16 +49,10 @@ export function useUser(): UserState & {
   }, []);
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // ignore network errors
-    }
-    // Wipe every Supabase session key from localStorage directly
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith("sb-")) localStorage.removeItem(key);
-    }
-    window.location.replace("/login");
+    try { await supabase.auth.signOut(); } catch { /* ignore */ }
+    try { localStorage.clear(); } catch { /* ignore */ }
+    try { sessionStorage.clear(); } catch { /* ignore */ }
+    window.location.href = "/login";
   };
 
   return { ...state, signOut, refresh };
