@@ -12,7 +12,7 @@ interface UserState {
 }
 
 export function useUser(): UserState & {
-  signOut: () => Promise<void>;
+  signOut: () => void;
   refresh: () => Promise<void>;
 } {
   const [state, setState] = useState<UserState>({
@@ -48,8 +48,9 @@ export function useUser(): UserState & {
     return () => sub.data.subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
-    try { await supabase.auth.signOut(); } catch { /* ignore */ }
+  const signOut = () => {
+    // Fire-and-forget — don't await; a hanging network call was blocking the redirect
+    supabase.auth.signOut().catch(() => {});
     try { localStorage.clear(); } catch { /* ignore */ }
     try { sessionStorage.clear(); } catch { /* ignore */ }
     window.location.href = "/login";
