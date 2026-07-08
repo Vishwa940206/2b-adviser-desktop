@@ -23,8 +23,9 @@ const SELF_EMPLOYED_DOCS = [
 ];
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 outline-none transition placeholder:text-gray-400";
-const labelCls = "block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5";
+  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-blue-500 focus:bg-white outline-none transition placeholder:text-gray-400";
+const labelCls =
+  "block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5";
 
 export default function ApplyPage({ params }: { params: Promise<{ adviserId: string }> }) {
   const { adviserId } = use(params);
@@ -95,159 +96,171 @@ export default function ApplyPage({ params }: { params: Promise<{ adviserId: str
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-lg mx-auto space-y-5">
-
-        {/* Header */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900">Apply for finance</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Your details are sent securely to your adviser. Takes ~3 minutes.
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={onSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-
-          <div>
-            <label className={labelCls}>Full Name *</label>
-            <input required className={inputCls} value={form.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Jane Smith" />
+      <div className="max-w-lg mx-auto">
+        <form
+          onSubmit={onSubmit}
+          className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        >
+          {/* Header */}
+          <div className="px-6 pt-6 pb-5 border-b border-gray-100">
+            <h1 className="text-xl font-bold text-gray-900">Apply for finance</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Your details are sent securely to your adviser. Takes ~3 minutes.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Fields */}
+          <div className="px-6 py-5 space-y-4">
+
             <div>
-              <label className={labelCls}>Email</label>
-              <input type="email" className={inputCls} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="jane@email.com" />
+              <label className={labelCls}>Full Name *</label>
+              <input required className={inputCls} value={form.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Jane Smith" />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Email</label>
+                <input type="email" className={inputCls} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="jane@email.com" />
+              </div>
+              <div>
+                <label className={labelCls}>Phone</label>
+                <input className={inputCls} value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+44 7700 900000" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Date of Birth</label>
+                <input type="date" className={inputCls} value={form.dob} onChange={(e) => set("dob", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Employment</label>
+                <select className={inputCls} value={form.employment} onChange={(e) => set("employment", e.target.value)}>
+                  <option value="">Select…</option>
+                  <option value="employed">Employed</option>
+                  <option value="self_employed">Self-Employed</option>
+                  <option value="contractor">Contractor</option>
+                  <option value="retired">Retired</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className={labelCls}>Phone</label>
-              <input className={inputCls} value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+44 7700 900000" />
+              <label className={labelCls}>Address</label>
+              <input className={inputCls} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="123 High Street, London, SW1A 1AA" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Annual Income (£)</label>
+                <input type="number" className={inputCls} value={form.annual_income} onChange={(e) => set("annual_income", e.target.value)} placeholder="45000" />
+              </div>
+              <div>
+                <label className={labelCls}>Loan Amount (£)</label>
+                <input type="number" className={inputCls} value={form.loan_amount} onChange={(e) => set("loan_amount", e.target.value)} placeholder="250000" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Property Value (£)</label>
+                <input type="number" className={inputCls} value={form.property_value} onChange={(e) => set("property_value", e.target.value)} placeholder="350000" />
+              </div>
+              <div>
+                <label className={labelCls}>Intent</label>
+                <select className={inputCls} value={form.intent} onChange={(e) => set("intent", e.target.value)}>
+                  <option value="">Select…</option>
+                  <option value="purchase">Purchase</option>
+                  <option value="remortgage">Remortgage</option>
+                  <option value="buy_to_let">Buy to Let</option>
+                  <option value="equity_release">Equity Release</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Credit Notes (defaults, CCJs, etc.)</label>
+              <textarea className={`${inputCls} resize-none h-20`} value={form.credit_notes} onChange={(e) => set("credit_notes", e.target.value)} placeholder="Leave blank if none" />
+            </div>
+
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100" />
+
+          {/* Documents section */}
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText size={15} className="text-amber-600" />
+              <h2 className="font-bold text-sm text-gray-900">Documents You&apos;ll Need to Provide</h2>
+            </div>
+            <p className="text-xs text-amber-700 mb-4">Please have the following ready when we begin your application:</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[{ title: "Employed", docs: EMPLOYED_DOCS }, { title: "Self-Employed", docs: SELF_EMPLOYED_DOCS }].map(({ title, docs }) => (
+                <div key={title} className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <FileText size={13} className="text-amber-600" />
+                    <span className="font-bold text-xs text-gray-800">{title}</span>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {docs.map((d) => (
+                      <li key={d} className="flex items-start gap-1.5 text-xs text-gray-600">
+                        <span className="text-amber-500 mt-0.5 shrink-0">•</span>
+                        {d}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Date of Birth</label>
-              <input type="date" className={inputCls} value={form.dob} onChange={(e) => set("dob", e.target.value)} />
-            </div>
-            <div>
-              <label className={labelCls}>Employment</label>
-              <select className={inputCls} value={form.employment} onChange={(e) => set("employment", e.target.value)}>
-                <option value="">Select…</option>
-                <option value="employed">Employed</option>
-                <option value="self_employed">Self-Employed</option>
-                <option value="contractor">Contractor</option>
-                <option value="retired">Retired</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
+          {/* Divider */}
+          <div className="border-t border-gray-100" />
 
-          <div>
-            <label className={labelCls}>Address</label>
-            <input className={inputCls} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="123 High Street, London, SW1A 1AA" />
-          </div>
+          {/* Consent + Submit */}
+          <div className="px-6 py-5 space-y-4">
+            <button
+              type="button"
+              onClick={() => setConsent((c) => !c)}
+              className="flex items-start gap-3 text-left w-full"
+            >
+              {consent
+                ? <CheckSquare size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                : <Square size={18} className="text-gray-300 shrink-0 mt-0.5" />
+              }
+              <span className="text-sm text-gray-600 leading-relaxed">
+                I have read and acknowledge the Privacy Notice, and consent to my personal information
+                and any uploaded documents being processed for the purpose of my enquiry.{" "}
+                <span className="text-red-500">*</span>
+              </span>
+            </button>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Annual Income (£)</label>
-              <input type="number" className={inputCls} value={form.annual_income} onChange={(e) => set("annual_income", e.target.value)} placeholder="45000" />
-            </div>
-            <div>
-              <label className={labelCls}>Loan Amount (£)</label>
-              <input type="number" className={inputCls} value={form.loan_amount} onChange={(e) => set("loan_amount", e.target.value)} placeholder="250000" />
-            </div>
-          </div>
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+                {error}
+              </div>
+            )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Property Value (£)</label>
-              <input type="number" className={inputCls} value={form.property_value} onChange={(e) => set("property_value", e.target.value)} placeholder="350000" />
-            </div>
-            <div>
-              <label className={labelCls}>Intent</label>
-              <select className={inputCls} value={form.intent} onChange={(e) => set("intent", e.target.value)}>
-                <option value="">Select…</option>
-                <option value="purchase">Purchase</option>
-                <option value="remortgage">Remortgage</option>
-                <option value="buy_to_let">Buy to Let</option>
-                <option value="equity_release">Equity Release</option>
-              </select>
-            </div>
-          </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-full py-3.5 text-sm font-bold text-white transition disabled:opacity-50"
+              style={{ background: "#D4A843", opacity: consent ? 1 : 0.55 }}
+            >
+              {busy ? "Submitting…" : "Request Consultation"}
+            </button>
 
-          <div>
-            <label className={labelCls}>Credit Notes (defaults, CCJs, etc.)</label>
-            <textarea className={`${inputCls} resize-none h-20`} value={form.credit_notes} onChange={(e) => set("credit_notes", e.target.value)} placeholder="Leave blank if none" />
+            <p className="text-xs text-gray-400 flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              We respect your privacy and will only use your information to respond to your enquiry.
+            </p>
           </div>
 
         </form>
-
-        {/* Documents You'll Need */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText size={16} className="text-amber-600" />
-            <h2 className="font-bold text-gray-900">Documents You&apos;ll Need to Provide</h2>
-          </div>
-          <p className="text-sm text-amber-700 mb-4">Please have the following ready when we begin your application:</p>
-          <div className="grid grid-cols-2 gap-4">
-            {[{ title: "Employed", docs: EMPLOYED_DOCS }, { title: "Self-Employed", docs: SELF_EMPLOYED_DOCS }].map(({ title, docs }) => (
-              <div key={title} className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText size={14} className="text-amber-600" />
-                  <span className="font-bold text-sm text-gray-800">{title}</span>
-                </div>
-                <ul className="space-y-1.5">
-                  {docs.map((d) => (
-                    <li key={d} className="flex items-start gap-2 text-xs text-gray-600">
-                      <span className="text-amber-500 mt-0.5">•</span>
-                      {d}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Consent + Submit */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <button
-            type="button"
-            onClick={() => setConsent((c) => !c)}
-            className="flex items-start gap-3 text-left w-full"
-          >
-            {consent
-              ? <CheckSquare size={18} className="text-blue-600 shrink-0 mt-0.5" />
-              : <Square size={18} className="text-gray-400 shrink-0 mt-0.5" />
-            }
-            <span className="text-sm text-gray-700 leading-relaxed">
-              I have read and acknowledge the Privacy Notice, and consent to my personal information
-              being processed for the purpose of my enquiry.{" "}
-              <span className="text-red-500">*</span>
-            </span>
-          </button>
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={onSubmit}
-            disabled={busy}
-            className="w-full rounded-full py-3.5 text-sm font-bold transition disabled:opacity-50"
-            style={{ background: consent ? "#D4A843" : "#D4A843", color: "#fff", opacity: consent ? 1 : 0.6 }}
-          >
-            {busy ? "Submitting…" : "Request Consultation"}
-          </button>
-
-          <p className="text-xs text-gray-400 flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            We respect your privacy and will only use your information to respond to your enquiry.
-          </p>
-        </div>
-
       </div>
     </div>
   );
