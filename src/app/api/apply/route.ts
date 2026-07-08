@@ -1,15 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Uses the service role key (server-only, never exposed to the browser)
-// so it bypasses RLS — safe because we validate adviser_id exists first.
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: NextRequest) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json(
+        { error: "Server misconfiguration — SUPABASE_SERVICE_ROLE_KEY is not set." },
+        { status: 500 }
+      );
+    }
+
+    const adminSupabase = createClient(supabaseUrl, serviceKey);
+
     const body = await req.json();
 
     const {
@@ -51,7 +56,8 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Server error." }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

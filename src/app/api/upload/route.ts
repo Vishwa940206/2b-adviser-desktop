@@ -1,12 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
 
 export async function GET(req: NextRequest) {
+  const adminSupabase = getAdmin();
+  if (!adminSupabase) {
+    return NextResponse.json({ error: "Server misconfiguration." }, { status: 500 });
+  }
+
   const applicationId = req.nextUrl.searchParams.get("applicationId");
   if (!applicationId) {
     return NextResponse.json({ error: "Missing applicationId." }, { status: 400 });
@@ -44,6 +51,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const adminSupabase = getAdmin();
+    if (!adminSupabase) {
+      return NextResponse.json({ error: "Server misconfiguration." }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const applicationId = formData.get("applicationId") as string | null;
