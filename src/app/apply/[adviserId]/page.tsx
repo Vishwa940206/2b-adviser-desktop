@@ -3,8 +3,6 @@
 import { CheckSquare, FileText, Square } from "lucide-react";
 import { use, useState } from "react";
 
-import { supabase } from "@/lib/supabase";
-
 const EMPLOYED_DOCS = [
   "Passport",
   "Proof of Address",
@@ -55,25 +53,19 @@ export default function ApplyPage({ params }: { params: Promise<{ adviserId: str
     if (!consent) { setError("Please accept the privacy notice to continue."); return; }
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.from("b2b_applications").insert({
-      adviser_id: adviserId,
-      status: "submitted",
-      applicant_full_name: form.full_name,
-      applicant_email: form.email || null,
-      applicant_phone: form.phone || null,
-      applicant_dob: form.dob || null,
-      applicant_address: form.address || null,
-      employment: form.employment || null,
-      annual_income: form.annual_income ? Number(form.annual_income) : null,
-      loan_amount: form.loan_amount ? Number(form.loan_amount) : null,
-      property_value: form.property_value ? Number(form.property_value) : null,
-      intent: form.intent || null,
-      credit_notes: form.credit_notes || null,
-      raw_payload: form,
-    });
-    setBusy(false);
-    if (err) { setError(err.message); return; }
-    setSubmitted(true);
+    try {
+      const res = await fetch("/api/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adviser_id: adviserId, ...form }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || json.error) { setError(json.error ?? "Submission failed."); setBusy(false); return; }
+      setSubmitted(true);
+    } catch {
+      setError("Network error — please try again.");
+      setBusy(false);
+    }
   };
 
   if (submitted) {
