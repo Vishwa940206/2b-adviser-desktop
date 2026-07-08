@@ -6,16 +6,12 @@ import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useUser } from "@/hooks/useUser";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-
 export default function EmbedWidgetPage() {
   const { id: adviserId, loading } = useUser();
   const [copied, setCopied] = useState(false);
 
-  const widgetUrl =
-    adviserId && SUPABASE_URL
-      ? `${SUPABASE_URL}/functions/v1/widget?adviser=${adviserId}`
-      : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const widgetUrl = adviserId ? `${origin}/apply/${adviserId}` : "";
 
   const snippet = widgetUrl
     ? `<iframe\n  src="${widgetUrl}"\n  style="width:100%;height:780px;border:0"\n  loading="lazy"\n></iframe>`
