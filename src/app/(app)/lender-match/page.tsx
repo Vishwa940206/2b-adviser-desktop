@@ -69,12 +69,22 @@ export default function LenderMatchPage() {
       if (app.property_value != null) setPropertyValue(String(app.property_value));
       if (app.employment) setEmployment(app.employment);
       if (app.credit_notes) setCreditNotes(app.credit_notes);
-      if (app.intent) setIntent(app.intent);
       if (app.client_id && !clientId) setClientId(app.client_id);
-      // Map intent to case type
-      if (app.intent === "purchase") setCaseType("residential_purchase");
+
+      // Read new fields from raw_payload (stored by the updated apply form)
+      const payload = (app.raw_payload ?? {}) as Record<string, unknown>;
+
+      const ct = (payload.case_type ?? app.intent) as string | null;
+      if (ct) setCaseType(ct as CaseType);
+      else if (app.intent === "purchase") setCaseType("residential_purchase");
       else if (app.intent === "remortgage") setCaseType("remortgage");
       else if (app.intent === "buy_to_let") setCaseType("buy_to_let");
+      else if (app.intent === "equity_release") setCaseType("equity_release");
+
+      if (payload.is_first_time_buyer) setIsFirstTimeBuyer(true);
+      if (payload.property_type) setPropertyType(String(payload.property_type));
+      if (payload.intent && !payload.case_type) setIntent(String(payload.intent));
+
       setPrefilled(true);
     }
   }, [app, prefilled, clientId]);
@@ -314,7 +324,18 @@ export default function LenderMatchPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold text-[var(--text-primary)]">Top recommendations</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {suggestion.data.liveRates && (
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                      suggestion.data.liveRates.isLive
+                        ? "bg-green-100 text-green-700 border border-green-200"
+                        : "bg-gray-100 text-gray-600 border border-gray-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${suggestion.data.liveRates.isLive ? "bg-green-500" : "bg-gray-400"}`} />
+                      BoE base {suggestion.data.liveRates.baseRate}% · 2yr ~{suggestion.data.liveRates.twoYearFixed}% · 5yr ~{suggestion.data.liveRates.fiveYearFixed}%
+                      {suggestion.data.liveRates.isLive ? " (live)" : " (fallback)"}
+                    </span>
+                  )}
                   {suggestion.data.aiError && (
                     <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
                       AI unavailable — heuristic used

@@ -13,6 +13,27 @@ function getApiKey(): string | null {
   );
 }
 
+interface LiveRates {
+  baseRate: number;
+  twoYearFixed: number;
+  fiveYearFixed: number;
+  asOf: string;
+  isLive: boolean;
+}
+
+async function fetchLiveRates(): Promise<LiveRates | null> {
+  try {
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
+    const res = await fetch(`${origin}/api/rates`, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    return await res.json() as LiveRates;
+  } catch {
+    return null;
+  }
+}
+
 const SYSTEM_PROMPT = `You are a specialist UK mortgage adviser's lender-matching assistant with deep knowledge of the UK intermediary mortgage market as of 2026.
 
 Your task: given a client application snapshot and a lender knowledge base, identify the THREE best-fit lenders and explain exactly why they match — or why the case may face challenges.
@@ -157,13 +178,20 @@ export async function POST(req: NextRequest) {
     const snapshot = await req.json();
     const apiKey = getApiKey();
 
+    // Fetch live BoE base rate (cached 1hr by Next.js fetch)
+    const liveRates = await fetchLiveRates();
+
+    const systemWithRates = liveRates
+      ? `${SYSTEM_PROMPT}\n\nCurrent Bank of England base rate: ${liveRates.baseRate}% (as of ${liveRates.asOf}). Market indicative rates: 2yr fixed ~${liveRates.twoYearFixed}%, 5yr fixed ~${liveRates.fiveYearFixed}%. Use this to contextualise rates in your recommendations and adjust the indicativeRate you return accordingly.`
+      : SYSTEM_PROMPT;
+
     if (!apiKey) {
       const result = heuristicMatch(snapshot);
-      return NextResponse.json({ ...result, source: "heuristic" });
+      return NextResponse.json({ ...result, source: "heuristic", liveRates });
     }
 
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemWithRates },
       { role: "user", content: buildPrompt(snapshot) },
     ];
 
@@ -225,6 +253,7 @@ export async function POST(req: NextRequest) {
       recommendations,
       summary: parsed.summary,
       source: "openai",
+      liveRates,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

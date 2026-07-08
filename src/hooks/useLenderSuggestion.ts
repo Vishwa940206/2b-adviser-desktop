@@ -14,11 +14,20 @@ export interface LenderRecommendation {
   warnings: string[];
 }
 
+export interface LiveRates {
+  baseRate: number;
+  twoYearFixed: number;
+  fiveYearFixed: number;
+  asOf: string;
+  isLive: boolean;
+}
+
 export interface LenderSuggestionResult {
   recommendations: LenderRecommendation[];
   summary: string;
   source: "openai" | "heuristic";
   aiError?: string;
+  liveRates?: LiveRates | null;
 }
 
 export interface ApplicationSnapshot {
