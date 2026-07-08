@@ -1,11 +1,12 @@
 "use client";
 
-import { Mail } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ExternalLink, Mail } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { Spinner } from "@/components/Spinner";
+import { supabase } from "@/lib/supabase";
 import { useApplications } from "@/hooks/useApplications";
 import { useUser } from "@/hooks/useUser";
 import type { B2BApplication } from "@/types/database";
@@ -54,9 +55,28 @@ function formatEmployment(e: string | null): string {
 
 export default function DocumentsPage() {
   const { data: applications, loading, error } = useApplications("all");
-  const { email: adviserEmail, fullName: adviserName } = useUser();
+  const { email: adviserEmail, fullName: adviserName, id: adviserId } = useUser();
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [docCounts, setDocCounts] = useState<Record<string, number>>({});
+
+  // Fetch document counts per application in one query
+  useEffect(() => {
+    if (!applications.length || !adviserId) return;
+    const ids = applications.map((a) => a.id);
+    supabase
+      .from("application_documents")
+      .select("application_id")
+      .in("application_id", ids)
+      .then(({ data }) => {
+        if (!data) return;
+        const counts: Record<string, number> = {};
+        data.forEach((d) => {
+          counts[d.application_id] = (counts[d.application_id] ?? 0) + 1;
+        });
+        setDocCounts(counts);
+      });
+  }, [applications, adviserId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -77,19 +97,23 @@ export default function DocumentsPage() {
   const sendRequest = (app: B2BApplication) => {
     const docs = getDocList(app.employment);
     const docList = docs.map((d, i) => `${i + 1}. ${d}`).join("\n");
+    const uploadLink = `${window.location.origin}/upload/${app.id}`;
     const subject = `Documents required — your mortgage application`;
     const body = [
       `Dear ${app.applicant_full_name},`,
       "",
-      "Thank you for submitting your mortgage enquiry. To progress your application, please provide the following documents at your earliest convenience:",
+      "Thank you for submitting your mortgage enquiry. To progress your application, please provide the following documents:",
       "",
       docList,
       "",
-      `Please send clear scans or photos to ${adviserEmail ?? "your adviser"}.`,
+      "You can upload your documents securely using the link below — no account needed:",
+      uploadLink,
+      "",
+      `Alternatively, you can email scans directly to ${adviserEmail ?? "your adviser"}.`,
       "",
       "If you have any questions, please don't hesitate to get in touch.",
       "",
-      `Kind regards,`,
+      "Kind regards,",
       adviserName ?? "Your Adviser",
     ].join("\n");
 
@@ -177,6 +201,11 @@ export default function DocumentsPage() {
                       <span className="text-xs text-[var(--text-muted)] bg-[var(--bg)] border border-[var(--border)] px-2.5 py-1 rounded-full font-medium">
                         {formatEmployment(app.employment)}
                       </span>
+                      {(docCounts[app.id] ?? 0) > 0 && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                          {docCounts[app.id]} uploaded
+                        </span>
+                      )}
                       <span
                         className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                           sent
@@ -216,14 +245,27 @@ export default function DocumentsPage() {
                         ? `Sends to: ${app.applicant_email}`
                         : "No email — update the application to add one"}
                     </p>
-                    <button
-                      onClick={() => sendRequest(app)}
-                      disabled={!app.applicant_email}
-                      className="flex items-center gap-2 rounded-full bg-[var(--primary)] text-white px-4 py-2 text-sm font-semibold hover:bg-[var(--primary-dark)] disabled:opacity-40 transition shrink-0"
-                    >
-                      <Mail size={14} />
-                      {sent ? "Re-send Request" : "Send Document Request"}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(docCounts[app.id] ?? 0) > 0 && (
+                        <a
+                          href={`/upload/${app.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white text-[var(--text-secondary)] px-3.5 py-2 text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition"
+                        >
+                          <ExternalLink size={13} />
+                          View Uploads
+                        </a>
+                      )}
+                      <button
+                        onClick={() => sendRequest(app)}
+                        disabled={!app.applicant_email}
+                        className="flex items-center gap-2 rounded-full bg-[var(--primary)] text-white px-4 py-2 text-sm font-semibold hover:bg-[var(--primary-dark)] disabled:opacity-40 transition"
+                      >
+                        <Mail size={14} />
+                        {sent ? "Re-send Request" : "Send Document Request"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
