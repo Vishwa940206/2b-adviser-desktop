@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { lenderById } from "@/data/lenders";
@@ -41,39 +41,39 @@ export default function LenderApplicationPage() {
 
   const { data: client } = useClient(clientId);
 
-  const initial: FieldRow[] = useMemo(
-    () => [
-      { key: "applicant_name", label: "Applicant name", value: client?.full_name ?? "" },
-      { key: "applicant_dob", label: "Date of birth", value: client?.dob ?? "" },
-      { key: "applicant_email", label: "Email", value: client?.email ?? "" },
-      { key: "applicant_phone", label: "Phone", value: client?.phone ?? "" },
-      {
-        key: "applicant_address",
-        label: "Address",
-        value: client?.address ?? "",
-        multiline: true,
-      },
-      { key: "employment", label: "Employment", value: employment },
-      { key: "annual_income", label: "Annual income (£)", value: income },
-      { key: "loan_amount", label: "Loan amount (£)", value: loanAmount },
-      { key: "property_value", label: "Property value (£)", value: propertyValue },
-      { key: "intent", label: "Intent", value: intent },
-      {
-        key: "credit_notes",
-        label: "Credit notes",
-        value: creditNotes,
-        multiline: true,
-      },
-    ],
-    [client, income, loanAmount, propertyValue, employment, creditNotes, intent]
-  );
+  // URL param fields are available immediately; client fields load async
+  const [fields, setFields] = useState<FieldRow[]>([
+    { key: "applicant_name", label: "Applicant name", value: "" },
+    { key: "applicant_dob", label: "Date of birth", value: "" },
+    { key: "applicant_email", label: "Email", value: "" },
+    { key: "applicant_phone", label: "Phone", value: "" },
+    { key: "applicant_address", label: "Address", value: "", multiline: true },
+    { key: "employment", label: "Employment", value: employment },
+    { key: "annual_income", label: "Annual income (£)", value: income },
+    { key: "loan_amount", label: "Loan amount (£)", value: loanAmount },
+    { key: "property_value", label: "Property value (£)", value: propertyValue },
+    { key: "intent", label: "Intent", value: intent },
+    { key: "credit_notes", label: "Credit notes", value: creditNotes, multiline: true },
+  ]);
+  const [clientSynced, setClientSynced] = useState(false);
 
-  const [fields, setFields] = useState<FieldRow[]>(initial);
-
-  const stateInitialized = fields.some((f) => f.value !== "");
-  if (!stateInitialized && initial.some((f) => f.value !== "")) {
-    setFields(initial);
-  }
+  // Fill client personal details when they load from Supabase
+  useEffect(() => {
+    if (!client || clientSynced) return;
+    setFields((prev) =>
+      prev.map((f) => {
+        switch (f.key) {
+          case "applicant_name": return { ...f, value: client.full_name ?? "" };
+          case "applicant_dob": return { ...f, value: client.dob ?? "" };
+          case "applicant_email": return { ...f, value: client.email ?? "" };
+          case "applicant_phone": return { ...f, value: client.phone ?? "" };
+          case "applicant_address": return { ...f, value: client.address ?? "" };
+          default: return f;
+        }
+      })
+    );
+    setClientSynced(true);
+  }, [client, clientSynced]);
 
   const updateField = (key: string, value: string) =>
     setFields((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)));

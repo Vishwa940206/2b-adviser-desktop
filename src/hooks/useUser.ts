@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 interface UserState {
   id: string | null;
@@ -21,31 +22,45 @@ export function useUser(): UserState & {
     fullName: null,
     loading: true,
   });
+  const mounted = useRef(true);
 
-  const refresh = async () => {
-    const { data: userRes } = await supabase.auth.getUser();
-    const u = userRes.user;
+  const loadProfile = async (u: User | null) => {
     if (!u) {
-      setState({ id: null, email: null, fullName: null, loading: false });
+      if (mounted.current) setState({ id: null, email: null, fullName: null, loading: false });
       return;
     }
+    // Unblock pages immediately — set id/email now, fullName fills in shortly
+    if (mounted.current) setState({ id: u.id, email: u.email ?? null, fullName: null, loading: false });
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
       .eq("id", u.id)
       .maybeSingle();
-    setState({
-      id: u.id,
-      email: u.email ?? null,
-      fullName: profile?.full_name ?? null,
-      loading: false,
-    });
+    if (mounted.current && profile?.full_name) {
+      setState((prev) => ({ ...prev, fullName: profile.full_name }));
+    }
+  };
+
+  const refresh = async () => {
+    // Explicit refresh: re-validate session and reload profile
+    const { data: { session } } = await supabase.auth.getSession();
+    await loadProfile(session?.user ?? null);
   };
 
   useEffect(() => {
-    refresh();
-    const sub = supabase.auth.onAuthStateChange(() => refresh());
-    return () => sub.data.subscription.unsubscribe();
+    mounted.current = true;
+    // Fast initial load — reads localStorage, no network call
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      loadProfile(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      loadProfile(session?.user ?? null);
+    });
+    return () => {
+      mounted.current = false;
+      subscription.unsubscribe();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signOut = () => {
