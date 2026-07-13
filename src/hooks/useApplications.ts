@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import type {
   ApplicationDocument,
@@ -26,7 +27,11 @@ export function useApplications(status?: ApplicationStatus | "all") {
     }
     setLoading(true);
     setError(null);
-    let q = supabase.from("b2b_applications").select("*").order("submitted_at", { ascending: false });
+    let q = supabase
+      .from("b2b_applications")
+      .select("*")
+      .eq("adviser_id", adviserId)
+      .order("submitted_at", { ascending: false });
     if (status && status !== "all") q = q.eq("status", status);
     const { data: rows, error: err } = await q;
     if (err) setError(err.message);
@@ -100,19 +105,36 @@ export async function approveApplication(app: B2BApplication): Promise<{ clientI
     })
     .eq("id", app.id);
   if (error) throw error;
+
+  notify(supabase, {
+    adviserId: app.adviser_id,
+    type: "application_status",
+    title: `${app.applicant_full_name}'s application was approved`,
+    link: `/applications/${app.id}`,
+  });
+
   return { clientId: clientId! };
 }
 
 export async function rejectApplication(id: string, notes?: string): Promise<void> {
-  const { error } = await supabase
+  const { data: app, error } = await supabase
     .from("b2b_applications")
     .update({
       status: "rejected",
       rejected_at: new Date().toISOString(),
       reviewer_notes: notes ?? null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("adviser_id, applicant_full_name")
+    .single();
   if (error) throw error;
+
+  notify(supabase, {
+    adviserId: app.adviser_id,
+    type: "application_status",
+    title: `${app.applicant_full_name}'s application was rejected`,
+    link: `/applications/${id}`,
+  });
 }
 
 export async function signedUrlForDocument(storagePath: string, expiresIn = 300): Promise<string> {

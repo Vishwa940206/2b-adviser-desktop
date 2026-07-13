@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { notify } from "@/lib/notify";
+
 function getAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     const { data: app } = await adminSupabase
       .from("b2b_applications")
-      .select("id")
+      .select("id, adviser_id, applicant_full_name")
       .eq("id", applicationId)
       .maybeSingle();
 
@@ -111,6 +113,14 @@ export async function POST(req: NextRequest) {
     if (dbError) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });
     }
+
+    notify(adminSupabase, {
+      adviserId: app.adviser_id,
+      type: "document_uploaded",
+      title: `${app.applicant_full_name} uploaded a document`,
+      body: file.name,
+      link: `/applications/${applicationId}`,
+    });
 
     return NextResponse.json({ ok: true, document: doc });
   } catch {

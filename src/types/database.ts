@@ -215,3 +215,20 @@ export interface LenderAutofill {
   ai_warnings: string[];
   created_at: string;
 }
+
+export type NotificationType =
+  | "new_application"
+  | "application_status"
+  | "document_uploaded"
+  | "rate_change";
+
+export interface Notification {
+  id: string;
+  adviser_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
+}

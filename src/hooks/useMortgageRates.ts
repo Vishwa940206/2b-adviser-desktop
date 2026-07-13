@@ -10,6 +10,7 @@ export interface MortgageRates {
   trackerRate: number;
   asOf: string;
   isLive: boolean;
+  quotedRatesSource?: "boe_quoted" | "derived";
 }
 
 const FALLBACK: MortgageRates = {
@@ -20,6 +21,7 @@ const FALLBACK: MortgageRates = {
   trackerRate: 5.15,
   asOf: "Jun 2025",
   isLive: false,
+  quotedRatesSource: "derived",
 };
 
 export function useMortgageRates() {
