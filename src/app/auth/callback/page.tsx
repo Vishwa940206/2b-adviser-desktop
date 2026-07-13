@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { AuthBackground } from "@/components/AuthBackground";
 import { supabase } from "@/lib/supabase";
+import { syncAdvisorToCRM } from "@/lib/syncToCRM";
 import { Spinner } from "@/components/Spinner";
 
 export default function AuthCallbackPage() {
@@ -12,8 +14,17 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     // Supabase picks up the code/token from the URL automatically via detectSessionInUrl.
     // We just wait for the session to be established then redirect.
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
+        // Sync Google OAuth user to CRM (fire-and-forget)
+        if (session?.user.email) {
+          void syncAdvisorToCRM({
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name ?? null,
+            avatar_url: session.user.user_metadata?.avatar_url ?? null,
+            role: "advisor",
+          });
+        }
         router.replace("/dashboard");
       }
     });
@@ -27,8 +38,8 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
-      <Spinner label="Signing you in…" />
-    </div>
+    <AuthBackground>
+      <Spinner label="Signing you in…" className="text-white/70" />
+    </AuthBackground>
   );
 }

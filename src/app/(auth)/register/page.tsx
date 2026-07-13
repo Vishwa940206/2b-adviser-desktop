@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { AuthBackground } from "@/components/AuthBackground";
 import { supabase } from "@/lib/supabase";
+import { syncAdvisorToCRM } from "@/lib/syncToCRM";
 
 function GoogleIcon() {
   return (
@@ -55,6 +57,7 @@ export default function RegisterPage() {
 
     // If email confirmation is disabled in Supabase, session is returned immediately
     if (data.session) {
+      void syncAdvisorToCRM({ full_name: fullName, email, role: "advisor" });
       router.push("/dashboard");
       return;
     }
@@ -66,8 +69,8 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-4">
-        <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center space-y-4">
+      <AuthBackground>
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[var(--surface)] p-8 text-center space-y-4 shadow-2xl shadow-black/40">
           <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
@@ -84,15 +87,15 @@ export default function RegisterPage() {
             Back to sign in
           </Link>
         </div>
-      </div>
+      </AuthBackground>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-4">
+    <AuthBackground>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto shadow-lg shadow-[var(--primary)]/30">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto shadow-xl shadow-black/30">
             <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
@@ -105,11 +108,11 @@ export default function RegisterPage() {
               <text x="32" y="42" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="900" fontSize="24" fill="#ffffff" letterSpacing="-1">MG</text>
             </svg>
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-[var(--text-primary)]">MortgageGPT</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Your AI mortgage adviser</p>
+          <h1 className="font-heading mt-4 text-2xl font-bold text-white">MortgageGPT</h1>
+          <p className="text-sm text-white/60 mt-1">Your AI mortgage adviser</p>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 space-y-4 shadow-lg shadow-[var(--primary)]/5">
+        <div className="rounded-2xl border border-white/10 bg-[var(--surface)] p-6 space-y-4 shadow-2xl shadow-black/40">
 
           {/* Google sign-up */}
           <button
@@ -224,6 +227,6 @@ export default function RegisterPage() {
         </form>
         </div>
       </div>
-    </div>
+    </AuthBackground>
   );
 }

@@ -76,12 +76,16 @@ export default function DashboardPage() {
     },
   ];
 
+  const isBoE = rates.quotedRatesSource === "boe_quoted";
+  const fixedNote = isBoE ? "BoE quoted · 75% LTV" : "est. from base rate";
+  const svrNote   = isBoE ? "BoE quoted avg" : "est. from base rate";
+
   const rateCards = [
-    { label: "Base Rate",  value: rates.baseRate,      note: "BoE",           highlight: true  },
-    { label: "2yr Fixed",  value: rates.twoYearFixed,  note: "avg indication", highlight: false },
-    { label: "5yr Fixed",  value: rates.fiveYearFixed, note: "avg indication", highlight: false },
-    { label: "Tracker",    value: rates.trackerRate,   note: "base + 0.90%",   highlight: false },
-    { label: "SVR",        value: rates.svr,           note: "avg indication", warning: true    },
+    { label: "Base Rate",  value: rates.baseRate,      note: "BoE",        highlight: true  },
+    { label: "2yr Fixed",  value: rates.twoYearFixed,  note: fixedNote,    highlight: false },
+    { label: "5yr Fixed",  value: rates.fiveYearFixed, note: fixedNote,    highlight: false },
+    { label: "Tracker",    value: rates.trackerRate,   note: "base + 0.90%", highlight: false },
+    { label: "SVR",        value: rates.svr,           note: svrNote,      warning: true    },
   ];
 
   return (
@@ -94,14 +98,14 @@ export default function DashboardPage() {
       <div className="p-6 space-y-7">
 
         {/* KPI row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-px rounded-2xl border border-[var(--border)] bg-[var(--border)] overflow-hidden">
           {kpis.map((k) => {
             const Icon = k.Icon;
             return (
               <Link
                 key={k.label}
                 href={k.href}
-                className="card-hover rounded-2xl border border-[var(--border)] bg-white p-5 flex flex-col gap-3"
+                className="bg-white hover:bg-[var(--bg)] transition-colors p-5 flex flex-col gap-3"
               >
                 <div className="flex items-center justify-between">
                   <div className={`w-9 h-9 rounded-xl ${k.iconBg} flex items-center justify-center`}>
@@ -112,7 +116,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div>
-                  <div className={`text-3xl font-extrabold tracking-tight ${k.valueCls}`}>
+                  <div className={`font-heading text-3xl font-bold tabular ${k.valueCls}`}>
                     {k.value}
                   </div>
                   <div className="text-xs text-[var(--text-secondary)] mt-1 font-medium">{k.hint}</div>
@@ -129,7 +133,11 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${ratesLoading ? "bg-[var(--text-muted)]" : rates.isLive ? "bg-[var(--success)]" : "bg-[var(--text-muted)]"}`} />
               <span className="text-xs font-medium text-[var(--text-secondary)]">
-                {ratesLoading ? "Loading…" : rates.isLive ? `Live · BoE · ${rates.asOf}` : "Indicative average"}
+                {ratesLoading
+                  ? "Loading…"
+                  : rates.isLive
+                  ? `${isBoE ? "BoE quoted" : "BoE base"} · ${rates.asOf}`
+                  : "Indicative average"}
               </span>
             </div>
           </div>
@@ -149,7 +157,7 @@ export default function DashboardPage() {
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">
                   {r.label}
                 </div>
-                <div className={`text-2xl font-extrabold tracking-tight ${
+                <div className={`font-heading text-2xl font-bold tabular ${
                   r.highlight ? "text-[var(--primary)]" : r.warning ? "text-amber-700" : "text-[var(--text-primary)]"
                 }`}>
                   {ratesLoading ? "—" : `${r.value.toFixed(2)}%`}
@@ -251,23 +259,20 @@ export default function DashboardPage() {
         </div>
 
         {/* AI CTA banner */}
-        <div
-          className="rounded-2xl p-6 flex items-center justify-between gap-6 overflow-hidden relative"
-          style={{ background: "linear-gradient(135deg, #1A0A3C 0%, #4F35CC 60%, #8B5CF6 100%)" }}
-        >
-          {/* Background glow */}
-          <div className="absolute right-16 top-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+        <div className="rounded-2xl p-6 flex items-center justify-between gap-6 overflow-hidden relative bg-[var(--text-primary)]">
+          {/* Accent glow */}
+          <div className="absolute right-16 top-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-[var(--accent)]/25 blur-2xl pointer-events-none" />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
             <Zap size={96} className="text-white" strokeWidth={1} />
           </div>
 
           <div className="flex items-center gap-4 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
-              <Zap size={18} className="text-white" />
+            <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+              <Zap size={18} className="text-[var(--accent)]" />
             </div>
             <div>
-              <div className="font-extrabold text-white text-base tracking-tight">AI ready · Start a new case</div>
-              <div className="text-sm text-white/70 mt-0.5 font-medium">
+              <div className="font-heading font-bold text-white text-base">AI ready · Start a new case</div>
+              <div className="text-sm text-white/60 mt-0.5 font-medium">
                 Your AI adviser assistant is standing by to match, score, and draft for your next client profile.
               </div>
             </div>
@@ -275,7 +280,7 @@ export default function DashboardPage() {
 
           <Link
             href="/lender-match"
-            className="relative z-10 shrink-0 rounded-full bg-white text-[var(--primary-dark)] text-sm font-extrabold px-6 py-2.5 hover:bg-white/90 transition shadow-lg"
+            className="relative z-10 shrink-0 rounded-full bg-white text-[var(--text-primary)] text-sm font-bold px-6 py-2.5 hover:bg-white/90 transition"
           >
             Get started →
           </Link>

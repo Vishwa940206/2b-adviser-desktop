@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { AuthBackground } from "@/components/AuthBackground";
 import { supabase } from "@/lib/supabase";
 
 function GoogleIcon() {
@@ -17,25 +18,98 @@ function GoogleIcon() {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="M9 12l2 2 4-4" strokeWidth="2"/>
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
+
+  // Step 1 — credentials
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Step 2 — MFA
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const codeInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus the code input when the MFA step appears
+  useEffect(() => {
+    if (mfaStep) codeInputRef.current?.focus();
+  }, [mfaStep]);
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setBusy(false);
+      setError(signInError.message);
       return;
     }
+
+    // Check if MFA verification is required
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = factors?.totp?.[0];
+      if (totp) {
+        setMfaFactorId(totp.id);
+        setMfaStep(true);
+        setBusy(false);
+        return;
+      }
+    }
+
     router.push("/dashboard");
+  };
+
+  const onMfaSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!mfaFactorId) return;
+
+    const code = mfaCode.replace(/\s/g, "");
+    if (code.length !== 6) { setError("Enter your 6-digit code."); return; }
+
+    setMfaBusy(true);
+    setError(null);
+
+    const { error: mfaError } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaFactorId,
+      code,
+    });
+
+    setMfaBusy(false);
+
+    if (mfaError) {
+      setError("Invalid code — check your authenticator app and try again.");
+      setMfaCode("");
+      codeInputRef.current?.focus();
+      return;
+    }
+
+    router.push("/dashboard");
+  };
+
+  // Format input as "123 456"
+  const handleCodeChange = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 6);
+    setMfaCode(digits.length > 3 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : digits);
   };
 
   const onGoogleSignIn = async () => {
@@ -43,24 +117,84 @@ export default function LoginPage() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) {
-      setGoogleBusy(false);
-      setError(error.message);
-    }
-    // On success, Supabase redirects the browser — no need to setGoogleBusy(false)
+    if (error) { setGoogleBusy(false); setError(error.message); }
   };
 
+  // ── MFA step ──────────────────────────────────────────────────────────────
+  if (mfaStep) {
+    return (
+      <AuthBackground>
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center mx-auto backdrop-blur">
+              <ShieldIcon />
+            </div>
+            <h1 className="font-heading mt-4 text-2xl font-bold text-white">Two-factor verification</h1>
+            <p className="text-sm text-white/60 mt-1.5">
+              Open your authenticator app and enter the 6-digit code for MortgageGPT.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-lg shadow-[var(--primary)]/5">
+            <form onSubmit={onMfaSubmit} className="space-y-5">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Authentication code
+                </label>
+                <input
+                  ref={codeInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={mfaCode}
+                  onChange={(e) => handleCodeChange(e.target.value)}
+                  placeholder="123 456"
+                  required
+                  className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-4 py-4 text-2xl font-mono text-center tracking-[0.4em] focus:border-[var(--primary)] outline-none transition"
+                />
+              </div>
+
+              {error && (
+                <div className="text-sm text-[var(--error)] bg-red-50 border border-red-200 rounded-lg p-3">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={mfaBusy || mfaCode.replace(/\s/g, "").length < 6}
+                className="w-full rounded-full bg-[var(--primary)] text-white py-3 font-semibold hover:bg-[var(--primary-dark)] disabled:opacity-50 transition"
+              >
+                {mfaBusy ? "Verifying…" : "Verify →"}
+              </button>
+            </form>
+
+            <button
+              onClick={() => { setMfaStep(false); setMfaFactorId(null); setMfaCode(""); setError(null); }}
+              className="mt-4 w-full text-center text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+            >
+              ← Back to login
+            </button>
+          </div>
+
+          <p className="text-center text-xs text-white/50 mt-6">
+            Lost access to your authenticator? Contact your administrator to reset 2FA.
+          </p>
+        </div>
+      </AuthBackground>
+    );
+  }
+
+  // ── Normal login ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-4">
+    <AuthBackground>
       <div className="w-full max-w-md">
 
         {/* Brand header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto shadow-xl shadow-[var(--primary)]/30">
+          <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto shadow-xl shadow-black/30">
             <svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
@@ -75,34 +209,32 @@ export default function LoginPage() {
               <rect width="80" height="80" rx="22" fill="url(#lg)"/>
               <rect width="80" height="40" rx="22" fill="url(#sheen)"/>
               <ellipse cx="34" cy="24" rx="18" ry="10" fill="rgba(255,255,255,0.15)" transform="rotate(-15 34 24)"/>
-              {/* House icon */}
               <path d="M40 20 L56 34 L56 58 L46 58 L46 46 L34 46 L34 58 L24 58 L24 34 Z" fill="rgba(255,255,255,0.9)" />
               <path d="M32 20 L40 13 L48 20" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="3" strokeLinejoin="round"/>
-              {/* Sparkle */}
               <circle cx="58" cy="22" r="3" fill="rgba(255,255,255,0.7)"/>
               <circle cx="63" cy="17" r="1.5" fill="rgba(255,255,255,0.5)"/>
               <circle cx="54" cy="16" r="1" fill="rgba(255,255,255,0.5)"/>
             </svg>
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-[var(--text-primary)] tracking-tight">MortgageGPT</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1.5">Your AI mortgage adviser platform</p>
+          <h1 className="font-heading mt-4 text-3xl font-bold text-white">MortgageGPT</h1>
+          <p className="text-sm text-white/60 mt-1.5">Your AI mortgage adviser platform</p>
           <div className="flex items-center justify-center gap-4 mt-3">
-            <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/>
+            <span className="flex items-center gap-1.5 text-xs text-white/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"/>
               FCA-aware
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+            <span className="flex items-center gap-1.5 text-xs text-white/50">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"/>
               OpenAI powered
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+            <span className="flex items-center gap-1.5 text-xs text-white/50">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"/>
               Secure
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-lg shadow-[var(--primary)]/5 space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-[var(--surface)] p-6 shadow-2xl shadow-black/40 space-y-4">
           <div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">Welcome back</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">Sign in to your adviser account</p>
@@ -178,12 +310,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="text-center text-xs text-[var(--text-secondary)] mt-6">
+        <p className="text-center text-xs text-white/40 mt-6">
           By signing in you agree to our{" "}
           <span className="underline cursor-pointer">Terms of Service</span> and{" "}
           <span className="underline cursor-pointer">Privacy Policy</span>
         </p>
       </div>
-    </div>
+    </AuthBackground>
   );
 }

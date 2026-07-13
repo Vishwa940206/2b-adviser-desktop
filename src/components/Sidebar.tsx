@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BookOpen,
   Briefcase,
   Calendar as CalendarIcon,
   FileText,
@@ -17,15 +18,17 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { NotificationBell } from "@/components/NotificationBell";
 import { useUser } from "@/hooks/useUser";
 
 const PRIMARY = [
-  { href: "/dashboard",    label: "Dashboard",    Icon: Home     },
-  { href: "/applications", label: "Applications", Icon: Inbox    },
-  { href: "/clients",      label: "Clients",      Icon: Users    },
-  { href: "/pipeline",     label: "Pipeline",     Icon: Briefcase},
-  { href: "/lender-match", label: "Lender Match", Icon: Landmark },
-  { href: "/embed-widget", label: "Embed Widget", Icon: Link2    },
+  { href: "/dashboard",      label: "Dashboard",      Icon: Home       },
+  { href: "/applications",   label: "Applications",   Icon: Inbox      },
+  { href: "/clients",        label: "Clients",        Icon: Users      },
+  { href: "/pipeline",       label: "Pipeline",       Icon: Briefcase  },
+  { href: "/lender-match",   label: "Lender Match",   Icon: Landmark   },
+  { href: "/knowledge-bank", label: "Knowledge Bank", Icon: BookOpen   },
+  { href: "/embed-widget",   label: "Embed Widget",   Icon: Link2      },
 ];
 
 const MORE = [
@@ -59,18 +62,19 @@ export function Sidebar() {
           <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#8B5CF6"/>
-                <stop offset="100%" stopColor="#4F35CC"/>
+                <stop offset="0%" stopColor="#7C5CFF"/>
+                <stop offset="100%" stopColor="#4327D6"/>
               </linearGradient>
             </defs>
             <rect width="36" height="36" rx="9" fill="url(#sg)"/>
             <text x="18" y="24" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="900" fontSize="13" fill="#fff" letterSpacing="-0.5">MG</text>
           </svg>
         </div>
-        <div className="min-w-0">
-          <div className="font-extrabold text-[var(--text-primary)] text-sm leading-tight tracking-tight">MortgageGPT</div>
+        <div className="min-w-0 flex-1">
+          <div className="font-heading font-bold text-[var(--text-primary)] text-sm leading-tight">MortgageGPT</div>
           <div className="text-[10px] text-[var(--text-muted)] mt-0.5">AI mortgage adviser</div>
         </div>
+        <NotificationBell />
       </div>
 
       {/* Nav */}
@@ -126,20 +130,20 @@ function NavGroup({
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all relative group ${
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all group ${
               active
-                ? "bg-[var(--primary-light)] text-[var(--primary-dark)] font-semibold"
+                ? "bg-[var(--text-primary)] text-white font-semibold"
                 : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
             }`}
           >
-            {active && (
-              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[var(--primary)]" />
-            )}
             <Icon
               size={15}
-              className={active ? "text-[var(--primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors"}
+              className={active ? "text-white/70" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors"}
             />
             {label}
+            {active && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] ml-auto shadow-[0_0_0_3px_rgba(91,61,245,0.35)]" />
+            )}
           </Link>
         );
       })}
