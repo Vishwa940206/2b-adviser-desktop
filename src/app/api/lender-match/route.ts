@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { LENDERS, lenderById, lendersByCaseType, type CaseType } from "@/data/lenders";
+import { LENDERS, type CaseType, type Lender } from "@/data/lenders";
+import { applyLiveMarketOffset, fetchLiveMarketRates } from "@/lib/liveLenderRates";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -11,27 +12,6 @@ function getApiKey(): string | null {
     process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
     null
   );
-}
-
-interface LiveRates {
-  baseRate: number;
-  twoYearFixed: number;
-  fiveYearFixed: number;
-  asOf: string;
-  isLive: boolean;
-}
-
-async function fetchLiveRates(): Promise<LiveRates | null> {
-  try {
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${origin}/api/rates`, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    return await res.json() as LiveRates;
-  } catch {
-    return null;
-  }
 }
 
 const SYSTEM_PROMPT = `You are a specialist UK mortgage adviser's lender-matching assistant with deep knowledge of the UK intermediary mortgage market as of 2026.
@@ -74,7 +54,7 @@ function buildPrompt(snapshot: {
   propertyType: string | null;
   clientName?: string | null;
   clientRiskProfile?: string | null;
-}): string {
+}, pool: Lender[]): string {
   const ltv =
     snapshot.loanAmount && snapshot.propertyValue
       ? Math.round((snapshot.loanAmount / snapshot.propertyValue) * 100)
@@ -84,11 +64,6 @@ function buildPrompt(snapshot: {
     snapshot.income && snapshot.loanAmount
       ? (snapshot.loanAmount / snapshot.income).toFixed(2)
       : null;
-
-  const caseType = snapshot.caseType as CaseType | null;
-  const relevantLenders = caseType
-    ? lendersByCaseType(caseType)
-    : LENDERS;
 
   return [
     "## Application Snapshot",
@@ -107,21 +82,18 @@ function buildPrompt(snapshot: {
     snapshot.clientRiskProfile ? `Client risk profile: ${snapshot.clientRiskProfile}` : "",
     "",
     "## Lender Knowledge Base (relevant to this case type)",
-    JSON.stringify(relevantLenders, null, 2),
+    JSON.stringify(pool, null, 2),
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-function heuristicMatch(snapshot: Parameters<typeof buildPrompt>[0]) {
+function heuristicMatch(snapshot: Parameters<typeof buildPrompt>[0], pool: Lender[]) {
   const income = snapshot.income ?? 0;
   const ltv =
     snapshot.loanAmount && snapshot.propertyValue
       ? (snapshot.loanAmount / snapshot.propertyValue) * 100
       : null;
-
-  const caseType = snapshot.caseType as CaseType | null;
-  const pool = caseType ? lendersByCaseType(caseType) : LENDERS;
 
   const ranked = pool
     .map((lender) => {
@@ -178,21 +150,27 @@ export async function POST(req: NextRequest) {
     const snapshot = await req.json();
     const apiKey = getApiKey();
 
-    // Fetch live BoE base rate (cached 1hr by Next.js fetch)
-    const liveRates = await fetchLiveRates();
+    // Fetch live BoE-quoted market rates (cached 1hr) and shift the static
+    // lender rate book to track them — there's no free per-lender live feed.
+    const liveRates = await fetchLiveMarketRates();
+    const liveLenders = applyLiveMarketOffset(LENDERS, liveRates);
+    const liveById = new Map(liveLenders.map((l) => [l.id, l]));
+
+    const caseType = snapshot.caseType as CaseType | null;
+    const pool = caseType ? liveLenders.filter((l) => l.caseTypes.includes(caseType)) : liveLenders;
 
     const systemWithRates = liveRates
       ? `${SYSTEM_PROMPT}\n\nCurrent Bank of England base rate: ${liveRates.baseRate}% (as of ${liveRates.asOf}). Market indicative rates: 2yr fixed ~${liveRates.twoYearFixed}%, 5yr fixed ~${liveRates.fiveYearFixed}%. Use this to contextualise rates in your recommendations and adjust the indicativeRate you return accordingly.`
       : SYSTEM_PROMPT;
 
     if (!apiKey) {
-      const result = heuristicMatch(snapshot);
+      const result = heuristicMatch(snapshot, pool);
       return NextResponse.json({ ...result, source: "heuristic", liveRates });
     }
 
     const messages = [
       { role: "system", content: systemWithRates },
-      { role: "user", content: buildPrompt(snapshot) },
+      { role: "user", content: buildPrompt(snapshot, pool) },
     ];
 
     const res = await fetch(OPENAI_URL, {
@@ -212,14 +190,14 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       // Fall back to heuristic on API error
-      const result = heuristicMatch(snapshot);
+      const result = heuristicMatch(snapshot, pool);
       return NextResponse.json({ ...result, aiError: `OpenAI error ${res.status}: ${text.slice(0, 200)}` });
     }
 
     const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      return NextResponse.json(heuristicMatch(snapshot));
+      return NextResponse.json(heuristicMatch(snapshot, pool));
     }
 
     const parsed = JSON.parse(content) as {
@@ -235,7 +213,7 @@ export async function POST(req: NextRequest) {
 
     const recommendations = (parsed.recommendations ?? [])
       .map((r) => {
-        const lender = lenderById(r.lenderId);
+        const lender = liveById.get(r.lenderId);
         if (!lender) return null;
         return {
           lenderId: r.lenderId,

@@ -16,11 +16,13 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { LENDERS, type CaseType, type Lender } from "@/data/lenders";
 import { getLenderMeta, getLogoSources } from "@/data/lenderMeta";
+import { useMortgageRates } from "@/hooks/useMortgageRates";
+import { applyLiveMarketOffset } from "@/lib/liveLenderRates";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ interface KBResult {
   keyPoints: string[];
   followUpSuggestions: string[];
   source: "ai" | "keyword";
+  liveRates?: { isLive: boolean; asOf: string } | null;
   error?: string;
 }
 
@@ -542,6 +545,11 @@ type Tab = "search" | "directory" | "rates";
 export default function KnowledgeBankPage() {
   const [tab, setTab] = useState<Tab>("search");
 
+  // Live rate tracking — no free per-lender feed exists, so we shift the
+  // static rate book to track the live BoE-quoted market average instead.
+  const { rates, loading: ratesLoading } = useMortgageRates();
+  const liveLenders = useMemo(() => applyLiveMarketOffset(LENDERS, rates), [rates]);
+
   // Chat
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<ChatEntry[]>([]);
@@ -603,10 +611,10 @@ export default function KnowledgeBankPage() {
     });
   };
 
-  const compareLenders = LENDERS.filter((l) => compareIds.has(l.id));
+  const compareLenders = liveLenders.filter((l) => compareIds.has(l.id));
 
   // Filtered directory
-  const filteredLenders = LENDERS.filter((l) => {
+  const filteredLenders = liveLenders.filter((l) => {
     if (filterCase && !l.caseTypes.includes(filterCase as CaseType)) return false;
     if (filterEmp && !l.employment.includes(filterEmp as Lender["employment"][number])) return false;
     if (filterCat && l.category !== filterCat) return false;
@@ -617,7 +625,7 @@ export default function KnowledgeBankPage() {
     return true;
   });
 
-  const sortedLenders = [...LENDERS].sort((a, b) =>
+  const sortedLenders = [...liveLenders].sort((a, b) =>
     rateSort === "maxLTV" || rateSort === "maxIncomeMultiple" ? b[rateSort] - a[rateSort] : a[rateSort] - b[rateSort]
   );
 
@@ -877,9 +885,10 @@ export default function KnowledgeBankPage() {
         {/* ── RATE TABLE TAB ── */}
         {tab === "rates" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-[var(--text-secondary)] font-medium">Sort by:</span>
-              {[
+            <div className="flex items-center gap-2 flex-wrap justify-between">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-[var(--text-secondary)] font-medium">Sort by:</span>
+                {[
                 { key: "rate2yr" as const, label: "2yr Fixed ↑" },
                 { key: "rate5yr" as const, label: "5yr Fixed ↑" },
                 { key: "maxLTV" as const, label: "Max LTV ↓" },
@@ -897,6 +906,19 @@ export default function KnowledgeBankPage() {
                   {label}
                 </button>
               ))}
+              </div>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 ${
+                ratesLoading ? "bg-gray-100 text-gray-500 border border-gray-200"
+                : rates.isLive ? "bg-green-100 text-green-700 border border-green-200"
+                : "bg-gray-100 text-gray-600 border border-gray-200"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${rates.isLive && !ratesLoading ? "bg-green-500" : "bg-gray-400"}`} />
+                {ratesLoading
+                  ? "Checking live market rate…"
+                  : rates.isLive
+                  ? `Tracking live BoE-quoted market · ${rates.asOf}`
+                  : "Indicative only — live market unavailable"}
+              </span>
             </div>
 
             <div className="rounded-2xl border border-[var(--border)] overflow-hidden">
@@ -954,7 +976,10 @@ export default function KnowledgeBankPage() {
             </div>
 
             <p className="text-xs text-[var(--text-muted)] text-center">
-              Indicative rates — verify on Trigold, Twenty7Tec or Iress before submission · July 2026 · Click any row to view full criteria
+              {rates.isLive
+                ? "Per-lender spreads are indicative; overall levels track the live BoE-quoted market average."
+                : "Indicative rates — live market unavailable, showing static baseline."}
+              {" "}Always verify on Trigold, Twenty7Tec or Iress before submission · Click any row to view full criteria
             </p>
           </div>
         )}

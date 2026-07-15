@@ -11,6 +11,8 @@ import { LENDERS, type CaseType } from "@/data/lenders";
 import { useApplication } from "@/hooks/useApplications";
 import { useClient, useClients } from "@/hooks/useClients";
 import { useLenderSuggestion } from "@/hooks/useLenderSuggestion";
+import { useMortgageRates } from "@/hooks/useMortgageRates";
+import { applyLiveMarketOffset } from "@/lib/liveLenderRates";
 
 const CASE_TYPES: { value: CaseType; label: string }[] = [
   { value: "residential_purchase", label: "Residential Purchase (home mover)" },
@@ -60,6 +62,11 @@ export default function LenderMatchPage() {
   const [prefilled, setPrefilled] = useState(false);
 
   const suggestion = useLenderSuggestion();
+
+  // No free per-lender live feed exists — shift the static rate book to
+  // track the live BoE-quoted market average instead.
+  const { rates } = useMortgageRates();
+  const liveLenders = useMemo(() => applyLiveMarketOffset(LENDERS, rates), [rates]);
 
   // Autofill from linked B2B application
   useEffect(() => {
@@ -124,7 +131,7 @@ export default function LenderMatchPage() {
 
   const recs = suggestion.data?.recommendations ?? [];
   const hiddenIds = new Set(recs.map((r) => r.lenderId));
-  const directory = LENDERS.filter((l) => !hiddenIds.has(l.id));
+  const directory = liveLenders.filter((l) => !hiddenIds.has(l.id));
 
   const processHref = (lenderId: string) => {
     const params = new URLSearchParams();
@@ -414,7 +421,10 @@ export default function LenderMatchPage() {
 
               <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
                 <Info size={11} />
-                Rates are indicative. Always verify live rates on your sourcing system (Trigold / Twenty7Tec / Iress) before quoting clients.
+                {rates.isLive
+                  ? "Per-lender spreads are indicative; overall levels track the live BoE-quoted market."
+                  : "Rates are indicative — live market unavailable."}
+                {" "}Always verify on your sourcing system (Trigold / Twenty7Tec / Iress) before quoting clients.
               </p>
             </div>
           ) : null}

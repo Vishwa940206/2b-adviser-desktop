@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { LENDERS, lenderById, type Lender } from "@/data/lenders";
+import { LENDERS, type Lender } from "@/data/lenders";
+import { applyLiveMarketOffset, fetchLiveMarketRates } from "@/lib/liveLenderRates";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -46,7 +47,7 @@ Strict rules:
 - If the scenario has no good lender matches, say so honestly and explain why.
 - followUpSuggestions should feel natural — things a real broker would genuinely want to know next.`;
 
-function buildPrompt(query: string, history: Array<{ q: string; a: string }>): string {
+function buildPrompt(query: string, history: Array<{ q: string; a: string }>, pool: Lender[]): string {
   const historyBlock = history.length > 0
     ? `## Previous questions in this session\n${history.map((h) => `Q: ${h.q}\nA: ${h.a}`).join("\n\n")}\n\n`
     : "";
@@ -57,7 +58,7 @@ function buildPrompt(query: string, history: Array<{ q: string; a: string }>): s
     "",
     "## Lender Knowledge Base (30 UK lenders)",
     JSON.stringify(
-      LENDERS.map((l) => ({
+      pool.map((l) => ({
         id: l.id,
         name: l.name,
         category: l.category,
@@ -81,7 +82,7 @@ function buildPrompt(query: string, history: Array<{ q: string; a: string }>): s
   ].filter(Boolean).join("\n");
 }
 
-function keywordFallback(query: string): {
+function keywordFallback(query: string, pool: Lender[]): {
   answer: string;
   matchedLenders: { lender: Lender; relevance: "high" | "medium" | "low"; matchReason: string; fitScore: number; warnings: string[] }[];
   keyPoints: string[];
@@ -90,7 +91,7 @@ function keywordFallback(query: string): {
 } {
   const q = query.toLowerCase();
 
-  const scored = LENDERS.map((l) => {
+  const scored = pool.map((l) => {
     let score = 0;
     const reasons: string[] = [];
     const warnings: string[] = [];
@@ -153,9 +154,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Query required." }, { status: 400 });
     }
 
+    // Shift the static lender rate book to track the live BoE-quoted market
+    // average — there's no free per-lender live feed.
+    const liveRates = await fetchLiveMarketRates();
+    const liveLenders = applyLiveMarketOffset(LENDERS, liveRates);
+    const liveById = new Map(liveLenders.map((l) => [l.id, l]));
+
     const apiKey = getApiKey();
     if (!apiKey) {
-      return NextResponse.json({ ...keywordFallback(query), source: "keyword" });
+      return NextResponse.json({ ...keywordFallback(query, liveLenders), source: "keyword", liveRates });
     }
 
     const res = await fetch(OPENAI_URL, {
@@ -167,13 +174,13 @@ export async function POST(req: NextRequest) {
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildPrompt(query, history.slice(-3)) },
+          { role: "user", content: buildPrompt(query, history.slice(-3), liveLenders) },
         ],
       }),
     });
 
     if (!res.ok) {
-      return NextResponse.json({ ...keywordFallback(query), source: "keyword", aiError: `OpenAI ${res.status}` });
+      return NextResponse.json({ ...keywordFallback(query, liveLenders), source: "keyword", aiError: `OpenAI ${res.status}`, liveRates });
     }
 
     const json = await res.json() as { choices?: { message?: { content?: string } }[] };
@@ -195,7 +202,7 @@ export async function POST(req: NextRequest) {
 
     const matchedLenders = (parsed.matchedLenders ?? [])
       .map((r) => {
-        const lender = lenderById(r.lenderId);
+        const lender = liveById.get(r.lenderId);
         if (!lender) return null;
         return {
           lender,
@@ -213,6 +220,7 @@ export async function POST(req: NextRequest) {
       keyPoints: parsed.keyPoints ?? [],
       followUpSuggestions: parsed.followUpSuggestions ?? [],
       source: "ai",
+      liveRates,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
